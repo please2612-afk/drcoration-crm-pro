@@ -1,0 +1,17 @@
+{
+  "version": "3.4.0",
+  "source_commit": "9d0842cf97e2d2f440c312021f24e1726883ef09",
+  "export_changes": [
+    "Portable npm commands and preview helper",
+    "Independent hosting manifest without existing Site identity",
+    "Synthetic demo drawing and project fixture instead of private project data"
+  ],
+  "runtime_modules_unchanged": [
+    "app/app.js",
+    "app/core.js",
+    "app/server.js",
+    "app/storage.js",
+    "app/legacy.js",
+    "app/style.css"
+  ]
+}

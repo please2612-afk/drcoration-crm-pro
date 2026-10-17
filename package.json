@@ -1,0 +1,16 @@
+{
+  "name": "yuan-build-os",
+  "version": "3.4.0",
+  "private": true,
+  "type": "module",
+  "description": "YUAN BUILD OS construction operations source",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "validate": "node scripts/validate-artifact.mjs",
+    "preview": "node scripts/preview.mjs"
+  }
+}
