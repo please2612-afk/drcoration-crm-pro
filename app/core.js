@@ -4,8 +4,8 @@ const VERSION='3.4', languages=['zh','es','en','hi'];
 const clone=v=>JSON.parse(JSON.stringify(v));
 const uid=(p='id')=>p+'_'+(globalThis.crypto?.randomUUID?.()||Date.now().toString(36)+Math.random().toString(36).slice(2));
 const round=n=>Math.round((Number(n)+Number.EPSILON)*1000)/1000;
-function number(v,label='数量',min=0,max=1e9){let n=Number(v);if(v===null||v===''||!Number.isFinite(n)||n<min||n>max)throw Error(label+' 无效');return n;}
-function date(v){if(!/^\d{4}-\d{2}-\d{2}$/.test(v||''))return false;return new Date(v+'T12:00:00Z').toISOString().slice(0,10)===v;}
+function number(v,label='数量',min=0,max=1e9){let n=Number(v);if((typeof v!=='number'&&typeof v!=='string')||String(v).trim()===''||!Number.isFinite(n)||n<min||n>max)throw Object.assign(Error(label+' 无效'),{status:400});return n;}
+function date(v){if(!/^\d{4}-\d{2}-\d{2}$/.test(v||''))return false;let value=new Date(v+'T12:00:00Z');return Number.isFinite(value.getTime())&&value.toISOString().slice(0,10)===v;}
 function day(d,n=0){let x=new Date(d+'T12:00:00Z');x.setUTCDate(x.getUTCDate()+n);return x.toISOString().slice(0,10);}
 function today(now=new Date(),tz='Europe/Madrid'){return new Intl.DateTimeFormat('en-CA',{timeZone:tz,year:'numeric',month:'2-digit',day:'2-digit'}).format(now);}
 const stampCache=new Map(),dateFormatters=new Map();

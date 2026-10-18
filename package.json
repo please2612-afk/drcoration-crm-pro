@@ -11,6 +11,7 @@
     "build": "node scripts/build.mjs",
     "test": "node --test tests/*.test.mjs",
     "validate": "node scripts/validate-artifact.mjs",
-    "preview": "node scripts/preview.mjs"
+    "preview": "node scripts/preview.mjs",
+    "dev": "node --use-env-proxy --env-file-if-exists=.env scripts/dev.mjs"
   }
 }

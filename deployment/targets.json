@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "website": {
+    "hostname": "yuandesignbuild.com",
+    "provider": "Dinahosting",
+    "hosting": "Hosting App WordPress",
+    "ownership": "user-reported; provider inventory not yet accessible",
+    "operation": "read-only",
+    "protectedRecords": ["@", "www", "MX", "TXT", "CAA", "NS"]
+  },
+  "staging": {
+    "hostname": "test.yuandesignbuild.com",
+    "provider": "Render",
+    "serviceName": "yuan-build-os-test",
+    "databaseName": "yuan_build_os_test",
+    "databaseEngine": "PostgreSQL",
+    "databaseResource": "yuan-build-os-test-db",
+    "assetStorage": "private; PostgreSQL BYTEA candidate for initial small test workload",
+    "region": "EU region, subject to verified availability and current price",
+    "publishAllowed": false
+  },
+  "production": {
+    "hostname": "app.yuandesignbuild.com",
+    "provider": "Render",
+    "serviceName": "yuan-build-os-production",
+    "databaseName": "yuan_build_os_production",
+    "databaseEngine": "PostgreSQL",
+    "databaseResource": "yuan-build-os-production-db",
+    "assetStorage": "separate private production storage",
+    "publishAllowed": false
+  },
+  "policy": {
+    "allowedDeploymentEnvironment": "staging",
+    "allowPurchases": false,
+    "allowMainDomainDnsChanges": false,
+    "allowExistingWebsiteChanges": false,
+    "allowDestructiveMigrations": false,
+    "requireVerifiedZeroCostBeforeCreatingFreeResources": true,
+    "maxNewMonthlyCostEurWithoutApproval": 0,
+    "requireSeparateServicesDatabasesSecretsAndAssetStorage": true
+  },
+  "dns": {
+    "authorizedStagingHostname": "test.yuandesignbuild.com",
+    "stagingTarget": null,
+    "productionTarget": null,
+    "operation": "inspect before proposing; no DNS change until actual Render target and existing records are verified"
+  },
+  "gates": {
+    "renderPostgresRuntimeAdapted": false,
+    "trustedAuthenticationImplemented": false,
+    "postgresMigrationValidated": false,
+    "assetDurabilityValidated": false,
+    "providerCostAndAccountVerified": false,
+    "dnsAndHttpsVerified": false
+  }
+}

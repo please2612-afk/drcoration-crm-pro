@@ -7,7 +7,7 @@ await import('../app/core.js');const C=globalThis.YuanCore,handler=createHandler
 const sql=await readFile(new URL('../drizzle/0000_workspace.sql',import.meta.url),'utf8');
 function env(){let db=new DatabaseSync(':memory:');db.exec(sql);let files=new Map();return {DB:{prepare(sql){let s=db.prepare(sql),args=[];const q={bind(...a){args=a;return q},async first(){return s.get(...args)||null},async all(){return {results:s.all(...args)}},async run(){let r=s.run(...args);return {meta:{changes:Number(r.changes)}}}};return q;}},BUCKET:{async put(key,bytes,meta){files.set(key,{body:bytes,...meta})},async get(key){return files.get(key)||null}},files};}
 const headers=(user='owner',email='owner@example.com')=>({'Content-Type':'application/json','oai-authenticated-user-id':user,'oai-authenticated-user-email':email});
-async function call(e,path,method='GET',body,user='owner',email='owner@example.com'){let r=await handler.fetch(new Request('https://test.example'+path,{method,headers:headers(user,email),...(body?{body:JSON.stringify(body)}:{})}),e);let data=await r.json();return {status:r.status,data};}
+async function call(e,path,method='GET',body,user='owner',email='owner@example.com',apiHandler=handler){let r=await apiHandler.fetch(new Request('https://test.example'+path,{method,headers:headers(user,email),...(body?{body:JSON.stringify(body)}:{})}),e);let data=await r.json();return {status:r.status,data};}
 function fixture(){let p=C.project({name:'Private apartment',budget:28000,start:'2026-10-19',workers:[{id:'w1',name:'Mario',skill:'electrical',email:'worker@example.com'},{id:'w2',name:'Other worker',skill:'general'}]});p.tasks=[{id:'t1',title:'Wiring',date:'2026-10-19',endDate:'2026-10-19',time:'08:00',endTime:'17:00',workerId:'w1',status:'assigned',progress:0,dependencies:[],materials:[{materialId:'cable',qty:10}],checks:[{text:'check',done:false}],details:'Worker instructions',clientDetails:'Client instructions',public:true},{id:'t2',title:'Other private task',date:'2026-10-19',endDate:'2026-10-19',time:'08:00',endTime:'17:00',workerId:'w2',status:'draft',progress:0,dependencies:[],materials:[],checks:[],public:false}];p.project.image='data:image/png;base64,aGVsbG8=';p.clientUpdates=[{id:'pub',published:true,date:'2026-10-17',text:'Public update',photos:[]},{id:'priv',published:false,date:'2026-10-17',text:'PRIVATE UPDATE',photos:[]}];let w=C.workspace(p);w.members=[{id:'m1',email:'worker@example.com',role:'worker',projectId:p.id,workerId:'w1'},{id:'m2',email:'client@example.com',role:'customer',projectId:p.id}];return w;}
 async function setup(){let e=env(),w=fixture();assert.equal((await call(e,'/api/workspace')).status,200);let put=await call(e,'/api/workspace','PUT',{expectedRevision:0,mutationId:'m0',workspace:w});assert.equal(put.status,200,JSON.stringify(put));return {e,w};}
 test('health and missing authentication behave correctly',async()=>{let e=env();assert.equal((await call(e,'/api/health')).data.ready,true);let r=await handler.fetch(new Request('https://test.example/api/workspace'),e);assert.equal(r.status,401);});
@@ -24,3 +24,45 @@ test('foreman sees project planning without costs and cannot overwrite owner dat
 test('foreman can edit daily instructions and create material requests without approving them',async()=>{let {e,fm}=await foremanSetup(),p=fm.workspace.projects[0];p.tasks[0].details='Clear daily instructions';p.project.budget=1;p.requests[0].status='received';p.requests.push({id:'r2',status:'received',reason:'Extra material',needDate:'2026-10-19',lines:[{id:'evil',materialId:'cable',qty:2,price:1,received:2}]});let result=await call(e,'/api/foreman','POST',{expectedRevision:fm.revision,operationId:'fm1',projects:[p]},'foreman','foreman@example.com');assert.equal(result.status,200,JSON.stringify(result));let owner=(await call(e,'/api/workspace')).data.workspace.projects[0];assert.equal(owner.tasks[0].details,'Clear daily instructions');assert.equal(owner.project.budget,28000);assert.equal(owner.requests[0].status,'approved');assert.equal(owner.requests[0].lines[0].price,45);assert.equal(owner.requests[1].status,'pending');assert.equal(owner.requests[1].lines[0].received,0);});
 test('foreman cannot mark own or other workers tasks done, or invent purchase receipts',async()=>{let {e,fm}=await foremanSetup(),p=fm.workspace.projects[0];p.tasks[0].status='done';let x=await call(e,'/api/foreman','POST',{expectedRevision:fm.revision,operationId:'fmhack1',projects:[p]},'foreman','foreman@example.com');assert.equal(x.status,403);p.tasks[0].status='assigned';p.movements.push({id:'fake',materialId:'cable',type:'receipt',qty:100,delta:100});let y=await call(e,'/api/foreman','POST',{expectedRevision:fm.revision,operationId:'fmhack2',projects:[p]},'foreman','foreman@example.com');assert.equal(y.status,403);});
 test('foreman can publish a draft only after specifying a valid worker',async()=>{let {e,fm}=await foremanSetup(),p=fm.workspace.projects[0];p.tasks[1].status='assigned';let x=await call(e,'/api/foreman','POST',{expectedRevision:fm.revision,operationId:'fmpublish',projects:[p]},'foreman','foreman@example.com');assert.equal(x.status,200);let out=(await call(e,'/api/workspace')).data.workspace.projects[0];assert.equal(out.tasks[1].status,'assigned');});
+
+
+test('AI endpoints require authentication, project access and valid bounded input',async()=>{
+ const {e,w}=await setup(),projectId=w.projects[0].id;
+ assert.equal((await handler.fetch(new Request('https://test.example/api/ai/status'),e)).status,401);
+ assert.equal((await call(e,'/api/ai/status')).data.configured,false);
+ assert.equal((await call(e,'/api/ai/advice','POST',{projectId},'intruder','unknown@example.com')).status,403);
+ assert.equal((await call(e,'/api/ai/advice','POST',{projectId:'other'})).status,403);
+ assert.equal((await call(e,'/api/ai/advice','POST',{projectId,question:'x'.repeat(601)})).status,400);
+ assert.equal((await call(e,'/api/ai/advice','POST',{projectId,language:'xx'})).status,400);
+ assert.equal((await call(e,'/api/ai/advice','POST',{projectId,focus:'approval'},'client','client@example.com')).status,403);
+ const result=await call(e,'/api/ai/advice','POST',{projectId,focus:'customer'},'client','client@example.com');
+ assert.equal(result.status,200);assert.equal(result.data.source,'rules');assert.equal(result.data.reason,'not_configured');
+ const crossOrigin=await handler.fetch(new Request('https://test.example/api/ai/advice',{method:'POST',headers:{...headers(),Origin:'https://other.example'},body:JSON.stringify({projectId})}),e);assert.equal(crossOrigin.status,403);
+});
+test('AI calls project public data before invoking the provider and never write workspace state',async()=>{
+ const {e,w}=await setup(),projectId=w.projects[0].id;let sent=[];
+ Object.assign(e,{AI_BASE_URL:'https://api.example.com/v1',AI_MODEL:'fixture-model',AI_API_KEY:'test-only-placeholder'});
+ const apiHandler=createHandler('',C,null,{fetchImpl:async(_url,options)=>{sent.push(JSON.parse(options.body));return new Response(JSON.stringify({choices:[{message:{content:'Public advice'}}]}));}});
+ const result=await call(e,'/api/ai/advice','POST',{projectId,focus:'customer',workspace:{private:'injected browser context'}},'client','client@example.com',apiHandler);
+ assert.equal(result.status,200);assert.equal(result.data.source,'ai');assert.equal(sent.length,1);
+ let serialized=JSON.stringify(sent[0]);for(const secret of ['28000','Mario','Worker instructions','Other private task','PRIVATE UPDATE','injected browser context'])assert.ok(!serialized.includes(secret),secret);
+ assert.ok(serialized.includes('Client instructions'));
+ await call(e,'/api/ai/advice','POST',{projectId,focus:'customer'},'owner','owner@example.com',apiHandler);
+ serialized=JSON.stringify(sent[1]);assert.ok(!serialized.includes('28000'));assert.ok(!serialized.includes('Worker instructions'));
+ assert.equal((await call(e,'/api/workspace')).data.revision,1);
+});
+
+test('unsaved AI proposals are scoped, validated, cached separately and never persisted',async()=>{
+ const {e,w}=await setup(),projectId=w.projects[0].id;let contexts=[];
+ Object.assign(e,{AI_BASE_URL:'https://api.example.com/v1',AI_MODEL:'fixture-model',AI_API_KEY:'test-only-placeholder'});
+ const aiHandler=createHandler('',C,null,{fetchImpl:async(_url,options)=>{contexts.push(JSON.parse(JSON.parse(options.body).messages[1].content).context);return new Response(JSON.stringify({choices:[{message:{content:'Check the proposed values.'}}]}));}});
+ const request=proposal=>call(e,'/api/ai/advice','POST',{projectId,proposal},'owner','owner@example.com',aiHandler);
+ assert.equal((await request({project:{budget:100000}})).data.draft,true);
+ assert.equal(contexts[0].project.budget,100000);assert.equal(contexts[0].uncommittedProposal,true);
+ await request({project:{budget:200000}});assert.equal(contexts.length,2);assert.equal(contexts[1].project.budget,200000);
+ assert.equal((await request({project:{workers:[]}})).status,400);
+ assert.equal((await request({project:{budget:'invalid'}})).status,400);
+ assert.equal((await call(e,'/api/ai/advice','POST',{projectId,proposal:{project:{budget:2}}},'client','client@example.com',aiHandler)).status,403);
+ assert.equal((await call(e,'/api/ai/advice','POST',{projectId,focus:'customer',proposal:{project:{budget:2}}},'owner','owner@example.com',aiHandler)).status,403);
+ const stored=(await call(e,'/api/workspace')).data;assert.equal(stored.workspace.projects[0].project.budget,28000);assert.equal(stored.revision,1);
+});

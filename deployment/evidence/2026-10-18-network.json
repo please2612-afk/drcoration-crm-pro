@@ -1,0 +1,77 @@
+{
+  "observed_at": "2026-10-18T17:04:13.209503+00:00",
+  "http_checks": [
+    {
+      "url": "https://yuandesignbuild.com",
+      "method": "GET",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+      "error_type": "URLError"
+    },
+    {
+      "url": "https://www.yuandesignbuild.com",
+      "method": "GET",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+      "error_type": "URLError"
+    },
+    {
+      "url": "https://test.yuandesignbuild.com",
+      "method": "GET",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+      "error_type": "URLError"
+    },
+    {
+      "url": "https://app.yuandesignbuild.com",
+      "method": "GET",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+      "error_type": "URLError"
+    },
+    {
+      "url": "https://api.render.com/v1/services?limit=1",
+      "method": "GET",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+      "error_type": "URLError"
+    },
+    {
+      "url": "https://render.com/docs/deploy-node-express-app",
+      "method": "GET",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+      "error_type": "URLError"
+    },
+    {
+      "url": "https://render.com/docs/postgresql",
+      "method": "GET",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+      "error_type": "URLError"
+    },
+    {
+      "url": "https://dinahosting.com/",
+      "method": "GET",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+      "error_type": "URLError"
+    },
+    {
+      "url": "https://dinahosting.com/api",
+      "method": "GET",
+      "error": "<urlopen error Tunnel connection failed: 403 Forbidden>",
+      "error_type": "URLError"
+    }
+  ],
+  "system_dns_checks": [
+    {
+      "host": "yuandesignbuild.com",
+      "error": "[Errno -3] Temporary failure in name resolution"
+    },
+    {
+      "host": "www.yuandesignbuild.com",
+      "error": "[Errno -3] Temporary failure in name resolution"
+    },
+    {
+      "host": "test.yuandesignbuild.com",
+      "error": "[Errno -3] Temporary failure in name resolution"
+    },
+    {
+      "host": "app.yuandesignbuild.com",
+      "error": "[Errno -3] Temporary failure in name resolution"
+    }
+  ]
+}

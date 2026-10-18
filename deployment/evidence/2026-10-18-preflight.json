@@ -1,0 +1,69 @@
+{
+  "observedAt": "2026-10-18T17:09:13.282Z",
+  "readOnly": true,
+  "externalWritesPerformed": false,
+  "head": "09e9c69ce86e121a374b5c41499fadbfa9f3f32d",
+  "workingTreeChanges": 21,
+  "githubGitRead": true,
+  "credentialPresence": {
+    "renderApiKey": false,
+    "dinahostingApiUser": false,
+    "dinahostingApiPassword": false,
+    "sshAgent": false,
+    "githubCliToken": true
+  },
+  "networkChecks": [
+    {
+      "url": "https://yuandesignbuild.com/",
+      "ok": false,
+      "category": "proxy_or_network_denied",
+      "tlsVerification": "enabled"
+    },
+    {
+      "url": "https://test.yuandesignbuild.com/api/health",
+      "ok": false,
+      "category": "proxy_or_network_denied",
+      "tlsVerification": "enabled"
+    },
+    {
+      "url": "https://app.yuandesignbuild.com/api/health",
+      "ok": false,
+      "category": "proxy_or_network_denied",
+      "tlsVerification": "enabled"
+    },
+    {
+      "url": "https://api.render.com/v1/services?limit=1",
+      "ok": false,
+      "category": "proxy_or_network_denied",
+      "tlsVerification": "enabled"
+    },
+    {
+      "url": "https://dinahosting.com/api",
+      "ok": false,
+      "category": "proxy_or_network_denied",
+      "tlsVerification": "enabled"
+    }
+  ],
+  "policyProblems": [],
+  "blockers": [
+    "PostgreSQL runtime adapter is missing; local SQLite and D1 are not PostgreSQL.",
+    "Durable private asset storage must be adapted and tested; ephemeral Render files are insufficient.",
+    "A trusted authentication boundary is required before accepting identity headers.",
+    "Render requires a production entry that listens on 0.0.0.0 and its PORT variable.",
+    "Render API authorization is not configured.",
+    "Dinahosting API authorization is not configured; no DNS or hosting write is possible.",
+    "Unverified gate: renderPostgresRuntimeAdapted",
+    "Unverified gate: trustedAuthenticationImplemented",
+    "Unverified gate: postgresMigrationValidated",
+    "Unverified gate: assetDurabilityValidated",
+    "Unverified gate: providerCostAndAccountVerified",
+    "Unverified gate: dnsAndHttpsVerified",
+    "External network or service checks have not all succeeded; HTTP/DNS/TLS readiness is unproven."
+  ],
+  "deploymentReady": false,
+  "targets": {
+    "website": "yuandesignbuild.com",
+    "staging": "test.yuandesignbuild.com",
+    "production": "app.yuandesignbuild.com"
+  }
+}

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
-const scripts=await Promise.all(['core.js','legacy.js','app.js'].map(x=>readFile(new URL('../app/'+x,import.meta.url),'utf8')));
+const scripts=await Promise.all(['core.js','legacy.js','advisor.js','assistant-ui.js','app.js'].map(x=>readFile(new URL('../app/'+x,import.meta.url),'utf8')));
 const seed=await readFile(new URL('../app/seed.json',import.meta.url),'utf8');
 async function runtime(){
  const elements=new Map();

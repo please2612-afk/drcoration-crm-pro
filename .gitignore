@@ -147,3 +147,7 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Local full API development data and generated hosting configuration
+.yuan-dev/
+.openai/

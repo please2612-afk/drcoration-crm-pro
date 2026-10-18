@@ -1,10 +1,13 @@
-export function createHandler(html,C,initialProject=null){
+import {createAIService} from './ai.js';
+
+export function createHandler(html,C,initialProject=null,options={}){
+ const ai=createAIService(C,options);
  const headers={'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
  const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers});
  const error=(message,status=400)=>Object.assign(Error(message),{status});
  const MAX=12*1024*1024;
  function identity(request){const id=request.headers.get('oai-authenticated-user-id'),email=(request.headers.get('oai-authenticated-user-email')||'').toLowerCase();if(!id)throw error('请先登录 ChatGPT 账户',401);return {id,email};}
- async function body(request){if(Number(request.headers.get('content-length'))>MAX)throw error('本次提交过大，请减少照片后重试',413);const reader=request.body?.getReader();if(!reader)throw error('缺少数据');let chunks=[],size=0;while(true){let {done,value}=await reader.read();if(done)break;size+=value.length;if(size>MAX){await reader.cancel();throw error('本次提交过大',413);}chunks.push(value);}let bytes=new Uint8Array(size),offset=0;for(let c of chunks){bytes.set(c,offset);offset+=c.length;}try{return JSON.parse(new TextDecoder().decode(bytes));}catch{throw error('JSON 格式无效');}}
+ async function body(request,max=MAX){if(Number(request.headers.get('content-length'))>max)throw error('本次提交过大，请减少照片后重试',413);const reader=request.body?.getReader();if(!reader)throw error('缺少数据');let chunks=[],size=0;while(true){let {done,value}=await reader.read();if(done)break;size+=value.length;if(size>max){await reader.cancel();throw error('本次提交过大',413);}chunks.push(value);}let bytes=new Uint8Array(size),offset=0;for(let c of chunks){bytes.set(c,offset);offset+=c.length;}try{return JSON.parse(new TextDecoder().decode(bytes));}catch{throw error('JSON 格式无效');}}
  async function row(env){if(!env.DB||!env.BUCKET)throw error('云端存储尚未就绪',503);return env.DB.prepare('SELECT * FROM workspaces WHERE id = ?').bind('primary').first();}
  function members(w,actor){return (w.members||[]).filter(m=>m.email.toLowerCase()===actor.email);}
  function role(r,actor){if(r.owner_id===actor.id)return 'owner';const ms=members(JSON.parse(r.body),actor);if(!ms.length)throw error('当前账户没有项目权限',403);return ms.some(m=>m.role==='foreman')?'foreman':ms.some(m=>m.role==='worker')?'worker':'customer';}
@@ -41,6 +44,37 @@ export function createHandler(html,C,initialProject=null){
     const actor=identity(request);let r=await row(env);
     if(!r){await env.DB.prepare('INSERT OR IGNORE INTO workspaces (id, owner_id, owner_email, revision, body, mutation_id, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)').bind('primary',actor.id,actor.email,0,'null','',new Date().toISOString()).run();r=await row(env);}
     let as=r.owner_id===actor.id?'owner':r.body==='null'?(()=>{throw error('项目尚未初始化',403)})():role(r,actor);
+    if(path==='/api/ai/status'&&request.method==='GET')return json(ai.status(env));
+    if(path==='/api/ai/advice'&&request.method==='POST'){
+     const origin=request.headers.get('origin');if(origin&&origin!==url.origin)throw error('请从应用内发起分析',403);
+     const data=await body(request,16384);
+     if(!data||typeof data!=='object'||typeof data.projectId!=='string'||data.projectId.length>150)throw error('请选择有效项目');
+     const language=data.language||'zh',focus=data.focus||'overview',question=data.question??'',focusId=data.focusId||'';
+     if(!C.languages.includes(language)||!['overview','publish','approval','review','customer'].includes(focus)||typeof question!=='string'||question.length>600||typeof focusId!=='string'||focusId.length>150)throw error('分析参数无效');
+     if(as==='customer'&&!['customer','overview'].includes(focus))throw error('客户仅可分析公开进度',403);
+     const stored=JSON.parse(r.body);if(!stored)throw error('请先保存项目',409);
+     const visible=as==='owner'?stored:projectView(stored,actor,as);let project=visible.projects.find(p=>p.id===data.projectId);
+     if(!project)throw error('无权分析该项目',403);
+     let draftKey='';
+     if(data.proposal!=null){
+      if(as!=='owner'||focus==='customer')throw error('仅负责人可以分析未保存的决策预案',403);
+      const proposal=data.proposal;if(!proposal||typeof proposal!=='object'||Array.isArray(proposal))throw error('预案格式无效');
+      const keys=Object.keys(proposal);if(keys.length!==1||!['project','purchase'].includes(keys[0]))throw error('预案字段无效');
+      project=C.clone(project);
+      const numeric=value=>typeof value==='number'&&Number.isFinite(value)&&Math.abs(value)<=1e9;
+      if(proposal.project){
+       if(focus!=='overview'||typeof proposal.project!=='object'||Array.isArray(proposal.project))throw error('项目预案无效');
+       for(const [key,value] of Object.entries(proposal.project)){if(!['area','floor','wall','route','budget'].includes(key)||!numeric(value))throw error('项目预案数值无效');project.project[key]=value;}
+      }else if(proposal.purchase){
+       const purchase=proposal.purchase,request=project.requests.find(r=>r.id===focusId);
+       if(focus!=='approval'||!request||purchase.id!==request.id||!Array.isArray(purchase.lines)||!purchase.lines.length||purchase.lines.length>30)throw error('采购预案无效');
+       const known=new Set(C.catalog(project).map(m=>m.id)),seen=new Set();
+       request.lines=purchase.lines.map(line=>{if(!known.has(line.materialId)||seen.has(line.materialId)||!numeric(line.qty)||(line.price!==null&&!numeric(line.price)))throw error('采购预案明细无效');seen.add(line.materialId);return {materialId:line.materialId,qty:line.qty,price:line.price,received:0};});
+      }else throw error('预案格式无效');
+      draftKey=JSON.stringify(proposal);
+     }
+     return json(await ai.advise(env,{project,role:focus==='customer'?'customer':as,actorId:actor.id,revision:r.revision,language,focus,focusId,question:question.trim(),draftKey}));
+    }
     if(path==='/api/workspace'&&request.method==='GET'){let w=JSON.parse(r.body),projected=w?(as==='owner'?w:projectView(w,actor,as)):null;if(projected&&!projected.projects.length)throw error('没有可访问的项目',403);return json({role:as,revision:r.revision,workspace:projected,...(!w&&as==='owner'?{initialProject}:{}),identity:{email:actor.email},workerId:as==='worker'?projected.projects[0].project.workers[0]?.id:null});}
     if(path==='/api/workspace'&&request.method==='PUT'){
      if(as!=='owner')throw error('只有负责人可以修改工作区',403);let data=await body(request);if(typeof data.mutationId!=='string'||data.mutationId.length>150)throw error('提交编号无效');

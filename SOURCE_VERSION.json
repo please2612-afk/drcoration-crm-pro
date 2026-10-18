@@ -7,11 +7,13 @@
     "Synthetic demo drawing and project fixture instead of private project data"
   ],
   "runtime_modules_unchanged": [
-    "app/app.js",
-    "app/core.js",
-    "app/server.js",
     "app/storage.js",
-    "app/legacy.js",
-    "app/style.css"
+    "app/legacy.js"
+  ],
+  "v3_4_upgrade_changes": [
+    "Configurable server-side OpenAI-compatible advice API with role-projected context and read-only proposals",
+    "Decision and anomalous-input checks, customer progress explanations and graceful AI fallback",
+    "Dirty-form refresh protection, duplicate-submit protection and responsive dialogs",
+    "Loopback full API development server and automated Chromium workflow checks"
   ]
 }
